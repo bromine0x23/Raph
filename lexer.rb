@@ -1,34 +1,40 @@
 # -*- coding: utf-8 -*-
 
 =begin
-LETTER = [_a-zA-Z]
-DIGIT  = [0-9]
-COMMENT              = (--|//).*$
-WHITE_SPACE          = [ \t\v\f\r\n]+
-SEMICOLON            = ;
-LEFT_PARENTHESIS     = (
-RIGHT_PARENTHESIS    = )
-LEFT_SQUARE_BRACKET  = [
-RIGHT_SQUARE_BRACKET = ]
-LEFT_CURLY_BRACKET   = {
-RIGHT_CURLY_BRACKET  = }
-COMMA                = ,
-PLUS  = +
-MINUS = -
-MUL   = *
-DIV   = /
-MOD   = %
-POWER = **
-LT    = <
-GT    = >
-LE    = <=
-GE    = >=
-EQL   = ==
-NEQ    = !=
-LOGICAL_AND = &&
-LOGICAL_OR  = ||
-NUMERIC           = DIGIT+(\.DIGIT*)?
-WORD              = LETTER+(LETTER|DIGIT)*
+letter = 'a' | 'b' | ... | 'z' | '_' 
+digit  = '0' | '1' | ... | '9'
+comment              = (--|//).*$
+white-space          = [ \t\v\f\r\n]+
+comma                = ','
+semicolon            = ';'
+left_parenthesis     = '('
+right_parenthesis    = ')'
+left_square_bracket  = '['
+right_square_bracket = ']'
+left_curly_bracket   = '{'
+right_curly_bracket  = '}'
+plus      = '+'
+minus     = '-'
+mul       = '*'
+div       = '/'
+mod       = '%'
+pow       = '**'
+cmp       = '<=>'
+lt        = '<
+gt        = '>'
+le        = '<='
+ge        = '>='
+eql       = '=='
+neq       = '!='
+LOGIC_NOT = '!'
+LOGIC_AND = '&&'
+LOGIC_OR  = '||'
+BIT_AND   = '&'
+BIT_OR    = '|'
+BIT_XOR   = '^'
+assign    = '='
+numeric = digit , { digit } , [ '.' , { digit } ]
+word    = letter, { letter } , { letter | digit }
 =end
 
 class Lexer
@@ -45,28 +51,34 @@ class Lexer
 	class Token
 		TYPES = [
 			:EOF,            # EOF
-			:SEMICOLON,      # ;
+			:COMMA,     # ,
+			:SEMICOLON, # ;
 			:LEFT_PARENTHESIS,     # (
 			:RIGHT_PARENTHESIS,    # )
 			:LEFT_SQUARE_BRACKET,  # [
 			:RIGHT_SQUARE_BRACKET, # ]
 			:LEFT_CURLY_BRACKET,   # {
 			:RIGHT_CURLY_BRACKET,  # }
-			:COMMA,          # ,
-			:PLUS,           # +
-			:MINUS,          # -
-			:MUL,            # *
-			:DIV,            # /
-			:MOD,            # %
-			:POWER,          # **
-			:LT,             # <
-			:GT,             # >
-			:LE,             # <=
-			:GE,             # >=
-			:EQL,            # ==
-			:NEQ,            # !=
-			:LOGICAL_AND,    # &&
-			:LOGICAL_OR,     # ||
+			:PLUS,         # +
+			:MINUS,        # -
+			:MUL,          # *
+			:DIV,          # /
+			:MOD,          # %
+			:POW,          # **
+			:CMP,          # <=>
+			:LT,           # <
+			:GT,           # >
+			:LE,           # <=
+			:GE,           # >=
+			:EQL,          # ==
+			:NEQ,          # !=
+			:LOGIC_NOT,    # !
+			:LOGIC_AND,    # &&
+			:LOGIC_OR,     # ||
+			:BIT_AND,      # &
+			:BIT_OR,       # |
+			:BIT_XOR,      # ^
+			:ASSIGN,       # =
 
 			:NUMERIC,        # 数字字面量
 			:IDENTIFIER,     # 标识符
@@ -170,12 +182,17 @@ class Lexer
 		when /[ \t\f\r\n\v]/ # white spaces
 			skip_whitespace
 			get_token
+		when '#'
+			get_char
+			skip_common
+			get_token
 		when '+'
 			new_token(:PLUS, get_char)
 		when '-'
 			char = get_char
 			case peek_char
 			when '-'
+				get_char
 				skip_common
 				get_token
 			else
@@ -185,7 +202,7 @@ class Lexer
 			char = get_char
 			case peek_char
 			when '*'
-				new_token(:POWER, char << get_char)
+				new_token(:POW, char << get_char)
 			else
 				new_token(:MUL, char)
 			end
@@ -193,6 +210,7 @@ class Lexer
 			char = get_char
 			case peek_char
 			when '/'
+				get_char
 				skip_common
 				get_token
 			else
@@ -202,7 +220,13 @@ class Lexer
 			char = get_char
 			case peek_char
 			when '='
-				new_token(:LE, char << get_char)
+				char << get_char
+				case peek_char
+				when '>'
+					new_token(:CMP, char << get_char)
+				else
+					new_token(:LE, char)
+				end
 			else
 				new_token(:LT, char)
 			end
@@ -220,7 +244,7 @@ class Lexer
 			when '='
 				new_token(:EQL, char << get_char)
 			else
-				new_token(:UNKOWN, char)
+				new_token(:ASSIGN, char)
 			end
 		when '!'
 			char = get_char
@@ -228,23 +252,23 @@ class Lexer
 			when '='
 				new_token(:NEQ, char << get_char)
 			else
-				new_token(:UNKOWN, char)
+				new_token(:LOGIC_NOT, char)
 			end
 		when '&'
 			char = get_char
 			case peek_char
 			when '&'
-				new_token(:LOGICAL_AND, char << get_char)
+				new_token(:LOGIC_AND, char << get_char)
 			else
-				new_token(:UNKOWN, char)
+				new_token(:BIT_AND, char)
 			end
 		when '|'
 			char = get_char
 			case peek_char
 			when '|'
-				new_token(:LOGICAL_OR, char << get_char)
+				new_token(:LOGIC_OR, char << get_char)
 			else
-				new_token(:UNKOWN, char)
+				new_token(:BIT_OR, char)
 			end
 		when '%'
 			new_token(:MOD, get_char)

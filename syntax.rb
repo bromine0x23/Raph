@@ -144,7 +144,7 @@ module AST
 		end
 	end
 
-	class ID < Node
+	class Varibale < Node
 		def initialize(id)
 			super
 			@id = id
@@ -167,17 +167,6 @@ module AST
 		end
 	end
 
-	class Operator < Node
-		def initialize(op)
-			super
-			@op = op
-		end
-
-		def call
-			@op
-		end
-	end
-
 	class Call < Node
 		def initialize(id, args)
 			super
@@ -189,25 +178,25 @@ module AST
 		end
 	end
 
-	class UnaryOperate < Node
+	class UnaryOp < Node
 		def initialize(op, rhs)
 			super
 			@op, @rhs = op, rhs
 		end
 
 		def call
-			@rhs.call.send(@op.call)
+			@rhs.call.send(@op)
 		end
 	end
 
-	class BinaryOperate < Node
+	class BinaryOp < Node
 		def initialize(lhs, op, rhs)
 			super
 			@lhs, @op, @rhs = lhs, op, rhs
 		end
 
 		def call
-			(@lhs.call).send(@op.call, @rhs.call)
+			(@lhs.call).send(@op, @rhs.call)
 		end
 	end
 
@@ -408,7 +397,7 @@ private
 	end
 
 	def analysis_call_or_assign_stmt
-		need_token(:IDENTIFIER) do |identifier|
+		need_token(:IDENTIFIER) do |id|
 			case peek_token.type
 			when :LEFT_PARENTHESIS
 				arguments = []
@@ -417,7 +406,7 @@ private
 				end
 				need_token(:SEMICOLON)
 				AST::CallStmts.new(
-					AST::ID.new(identifier.value),
+					AST::Varibale.new(id.value),
 					arguments
 				)
 			when :IS
@@ -425,7 +414,7 @@ private
 					expr = analysis_expr
 					need_token(:SEMICOLON)
 					AST::AssignStmts.new(
-						identifier.value,
+						id.value,
 						expr
 					)
 				end
@@ -443,11 +432,11 @@ private
 		expr = analysis_eql_neq_expr
 		loop do
 			case peek_token.type
-			when :LOGICAL_OR
-				need_token(:LOGICAL_OR) do |operator|
-					expr = AST::BinaryOperate.new(
+			when :LOGIC_OR
+				need_token(:LOGIC_OR) do |op|
+					expr = AST::BinaryOp.new(
 						expr,
-						AST::Operator.new(operator.value),
+						op.value,
 						analysis_eql_neq_expr
 					)
 				end
@@ -462,11 +451,11 @@ private
 		expr = analysis_eql_neq_expr
 		loop do
 			case peek_token.type
-			when :LOGICAL_AND
-				need_token(:LOGICAL_AND) do |operator|
-					expr = AST::BinaryOperate.new(
+			when :LOGIC_AND
+				need_token(:LOGIC_AND) do |op|
+					expr = AST::BinaryOp.new(
 						expr,
-						AST::Operator.new(operator.value),
+						op.value,
 						analysis_eql_neq_expr
 					)
 				end
@@ -482,10 +471,10 @@ private
 		loop do
 			case peek_token.type
 			when :EQL, :NEQ
-				need_one_of(:EQL, :NEQ) do |operator|
-					expr = AST::BinaryOperate.new(
+				need_one_of(:EQL, :NEQ) do |op|
+					expr = AST::BinaryOp.new(
 						expr,
-						AST::Operator.new(operator.value),
+						op.value,
 						analysis_relation_expr
 					)
 				end
@@ -501,10 +490,10 @@ private
 		loop do
 			case peek_token.type
 			when :LT, :GT, :LE, :GE
-				need_one_of(:LT, :GT, :LE, :GE) do |operator|
-					expr = AST::BinaryOperate.new(
+				need_one_of(:LT, :GT, :LE, :GE) do |op|
+					expr = AST::BinaryOp.new(
 						expr,
-						AST::Operator.new(operator.value),
+						op.value,
 						analysis_relation_expr
 					)
 				end
@@ -520,10 +509,10 @@ private
 		loop do
 			case peek_token.type
 			when :PLUS, :MINUS
-				need_one_of(:PLUS, :MINUS) do |operator|
-					expr = AST::BinaryOperate.new(
+				need_one_of(:PLUS, :MINUS) do |op|
+					expr = AST::BinaryOp.new(
 						expr,
-						AST::Operator.new(operator.value),
+						op.value,
 						analysis_relation_expr
 					)
 				end
@@ -539,10 +528,10 @@ private
 		loop do
 			case peek_token.type
 			when :MUL, :DIV
-				need_one_of(:MUL, :DIV, :MOD) do |operator|
-					expr = AST::BinaryOperate.new(
+				need_one_of(:MUL, :DIV, :MOD) do |op|
+					expr = AST::BinaryOp.new(
 						expr,
-						AST::Operator.new(operator.value),
+						op.value,
 						analysis_relation_expr
 					)
 				end
@@ -557,11 +546,11 @@ private
 		expr = analysis_unary_expr
 		loop do
 			case peek_token.type
-			when :POWER
-				need_token(:POWER) do |operator|
-					expr = AST::BinaryOperate.new(
+			when :POW
+				need_token(:POW) do |op|
+					expr = AST::BinaryOp.new(
 						expr,
-						AST::Operator.new(operator.value),
+						op.value,
 						analysis_relation_expr
 					)
 				end
@@ -575,9 +564,9 @@ private
 	def analysis_unary_expr
 		case peek_token.type
 		when :PLUS, :MINUS
-			need_one_of(:PLUS, :MINUS) do |operator|
-					AST::UnaryOperate.new(
-					AST::Operator.new(:"#{operator.value}@"),
+			need_one_of(:PLUS, :MINUS) do |op|
+					AST::UnaryOp.new(
+					:"#{op.value}@",
 					analysis_postfix_expr
 				)
 			end
@@ -618,7 +607,7 @@ private
 			AST::Numeric.new(get_token.value)
 		when :IDENTIFIER
 			need_token(:IDENTIFIER) do |identifier|
-				AST::ID.new(identifier.value)
+				AST::Varibale.new(identifier.value)
 			end
 		when :LEFT_PARENTHESIS
 			need_pair(:LEFT_PARENTHESIS, :RIGHT_PARENTHESIS) do

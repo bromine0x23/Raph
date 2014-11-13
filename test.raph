@@ -6,10 +6,13 @@ for v from 1 to 256 step v begin
 	for i from 1 to max(4, v/32) step 1 begin
 		scale is (v+16*rand(), 2*v+8*rand());
 		rot is 2*PI*rand();
+
 		set_radius(2);
 		set_color(255 * rand(), 255 * rand(), 255 * rand());
+		
 		for t from 0 to 2*PI step PI/(2*v)
 			DRAW (sin(t), cos(t));
 	end
 end
+
 save();
